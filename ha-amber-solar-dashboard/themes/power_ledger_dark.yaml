@@ -1,0 +1,21 @@
+Power Ledger Dark:
+  modes:
+    dark:
+      primary-color: "#f0a93a"
+      accent-color: "#4fc9b8"
+      primary-background-color: "#12100d"
+      secondary-background-color: "#1b1712"
+      card-background-color: "#1b1712"
+      primary-text-color: "#f2ead9"
+      secondary-text-color: "#b9ac93"
+      disabled-text-color: "#7d735f"
+      divider-color: "#332c22"
+      state-icon-active-color: "#f0a93a"
+      state-icon-color: "#b9ac93"
+      error-color: "#d97757"
+      success-color: "#4fc9b8"
+  ha-card-border-radius: "4px"
+  ha-card-border-width: "1px"
+  ha-card-box-shadow: "none"
+  paper-font-common-base_-_font-family: "Georgia, 'Iowan Old Style', serif"
+  paper-font-body1_-_font-family: "Georgia, 'Iowan Old Style', serif"

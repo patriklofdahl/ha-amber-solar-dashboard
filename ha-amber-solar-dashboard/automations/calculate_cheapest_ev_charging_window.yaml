@@ -1,0 +1,31 @@
+alias: Calculate Cheapest EV Charging Window
+triggers:
+  - minutes: /30
+    trigger: time_pattern
+actions:
+  - variables:
+      forecasts: >-
+        {{ state_attr('sensor.YOUR_AMBER_SITE_general_forecast', 'forecasts')
+        | default([]) | sort(attribute='start_time') }}
+      intervals_needed: >-
+        {{ (states('input_number.ev_charge') | float * 2) | round(0, 'ceil') |
+        int }}
+  - variables:
+      best_index: >-
+        {%- set ns = namespace(best_sum=none, best_i=0) -%} {%- for i in
+        range(0, (forecasts | length) - intervals_needed + 1) -%} {%- set
+        window_sum = forecasts[i:i+intervals_needed] | map(attribute='per_kwh')
+        | sum -%} {%- if ns.best_sum is none or window_sum < ns.best_sum -%} {%-
+        set ns.best_sum = window_sum -%} {%- set ns.best_i = i -%} {%- endif -%}
+        {%- endfor -%} {{ ns.best_i }}
+  - target:
+      entity_id: input_datetime.ev_start
+    data:
+      datetime: "{{ (as_datetime(forecasts[best_index | int].start_time) | as_local).strftime('%Y-%m-%d %H:%M:%S') }}"
+    action: input_datetime.set_datetime
+  - target:
+      entity_id: input_datetime.ev_end
+    data:
+      datetime: "{{ (as_datetime(forecasts[(best_index | int) + intervals_needed - 1].end_time) | as_local).strftime('%Y-%m-%d %H:%M:%S') }}"
+    action: input_datetime.set_datetime
+mode: single

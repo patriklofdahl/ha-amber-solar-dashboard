@@ -1,0 +1,257 @@
+# Power Ledger — Home Assistant dashboard
+#
+# HOW TO INSTALL:
+# 1. Settings -> Dashboards -> + Add Dashboard -> "New dashboard from scratch"
+# 2. Give it a name, then open it, three-dot menu -> Edit Dashboard -> three-dot menu -> "Edit in YAML"
+# 3. Paste this whole file in, replacing the placeholder entity IDs below with your real ones
+#    (Developer Tools -> States, filter "amber" and "foxess" to find them)
+# 4. Set the dashboard/view theme to "Power Ledger Dark" (see power_ledger_theme.yaml)
+
+title: Power Ledger
+views:
+  - title: Energy
+    path: power-ledger
+    icon: mdi:transmission-tower
+    theme: Power Ledger Dark
+    cards:
+      - type: markdown
+        content: >
+          ## Power Ledger
+
+          Amber usage & cost, live from Home Assistant
+
+      # ---- Hero row: live price + today's numbers ----
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.YOUR_AMBER_SITE_general_price          # <-- replace: Amber import price entity
+            name: Import price
+            icon: mdi:transmission-tower-import
+            color: amber
+
+          - type: tile
+            entity: sensor.YOUR_AMBER_SITE_feed_in_price          # <-- replace: Amber export price entity
+            name: Export price
+            icon: mdi:solar-power
+            color: teal
+
+          - type: tile
+            entity: sensor.YOUR_FOX_SERIAL_daily_grid_consumption       # <-- replace: FoxESS today's grid import (kWh)
+            name: Grid drawn today
+            icon: mdi:flash
+            color: red
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.YOUR_FOX_SERIAL_daily_generation              # <-- replace: FoxESS today's solar generated (kWh)
+            name: Solar generated today
+            icon: mdi:white-balance-sunny
+            color: amber
+
+          - type: tile
+            entity: sensor.YOUR_FOX_SERIAL_daily_feedin                 # <-- replace: FoxESS today's export (kWh)
+            name: Exported today
+            icon: mdi:transmission-tower-export
+            color: teal
+
+      # ---- Price status / descriptor ----
+      - type: entities
+        title: Price status
+        show_header_toggle: false
+        entities:
+          - entity: sensor.YOUR_AMBER_SITE_feed_in_price_descriptor  # <-- replace if your entity is named differently
+            name: Current status
+
+      # ---- Historical bar-style view using long-term statistics ----
+      - type: statistics-graph
+        title: Grid drawn vs exported (daily)
+        chart_type: bar
+        period: day
+        days_to_show: 60
+        stat_types:
+          - sum
+        entities:
+          - sensor.YOUR_FOX_SERIAL_daily_grid_consumption
+          - sensor.YOUR_FOX_SERIAL_daily_feedin
+
+      # ---- Optional: raw entity list for quick glance ----
+      - type: glance
+        title: Quick glance
+        entities:
+          - entity: sensor.YOUR_AMBER_SITE_general_price
+            name: Import
+          - entity: sensor.YOUR_AMBER_SITE_feed_in_price
+            name: Export
+          - entity: sensor.YOUR_FOX_SERIAL_daily_grid_consumption
+            name: Drawn
+          - entity: sensor.YOUR_FOX_SERIAL_daily_generation
+            name: Solar
+
+      # ---- Cheapest time to start EV charging (set this in your car app timer) ----
+      - type: markdown
+        content: >
+          ## Cheapest time to start charging
+
+
+          # {{ as_timestamp(states('input_datetime.ev_start')) | timestamp_custom('%H:%M, %a %d %b') }}
+        card_mod:
+          style: |
+            ha-markdown {
+              text-align: center;
+            }
+            ha-markdown h1 {
+              color: #2ecc71 !important;
+            }
+
+  - title: Solar Overview
+    path: solar-overview
+    icon: mdi:solar-power-variant
+    theme: Power Ledger Dark
+    cards:
+      # ---- Solar / Home / Grid row ----
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Solar
+                secondary: "{{ states('sensor.YOUR_FOX_SERIAL_pv_power') }} kW  •  {{ states('sensor.YOUR_FOX_SERIAL_daily_generation') }} kWh today"
+                icon: mdi:white-balance-sunny
+                icon_color: amber
+                card_mod:
+                  style: |
+                    ha-card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; }
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.YOUR_FOX_SERIAL_pv_power
+                    color: "#f0a93a"
+                hours_to_show: 6
+                points_per_hour: 4
+                line_width: 0
+                animate: false
+                show:
+                  graph: bar
+                  labels: false
+                  legend: false
+                  name: false
+                  icon: false
+                  state: false
+                card_mod:
+                  style: |
+                    ha-card { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: -8px; box-shadow: none; }
+
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Home
+                secondary: "{{ states('sensor.YOUR_FOX_SERIAL_loads_power') }} kW  •  {{ states('sensor.foxess_daily_load_energy') }} kWh today"
+                icon: mdi:home
+                icon_color: blue
+                card_mod:
+                  style: |
+                    ha-card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; }
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.YOUR_FOX_SERIAL_loads_power
+                    color: "#4fa8fc"
+                hours_to_show: 6
+                points_per_hour: 4
+                line_width: 0
+                animate: false
+                show:
+                  graph: bar
+                  labels: false
+                  legend: false
+                  name: false
+                  icon: false
+                  state: false
+                card_mod:
+                  style: |
+                    ha-card { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: -8px; box-shadow: none; }
+
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Grid
+                secondary: >-
+                  {% set imp = states('sensor.YOUR_FOX_SERIAL_grid_consumption_power') | float(0) %}{% set exp = states('sensor.YOUR_FOX_SERIAL_feedin_power') | float(0) %}{% if exp > imp %}{{ exp }} kW • Exporting • {{ states('sensor.YOUR_FOX_SERIAL_daily_feedin') }} kWh today{% else %}{{ imp }} kW • Importing • {{ states('sensor.YOUR_FOX_SERIAL_daily_grid_consumption') }} kWh today{% endif %}
+                icon: mdi:transmission-tower
+                icon_color: >-
+                  {% set imp = states('sensor.YOUR_FOX_SERIAL_grid_consumption_power') | float(0) %}{% set exp = states('sensor.YOUR_FOX_SERIAL_feedin_power') | float(0) %}{% if exp > imp %}green{% else %}red{% endif %}
+                card_mod:
+                  style: |
+                    ha-card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; }
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.YOUR_FOX_SERIAL_grid_consumption_power
+                    name: Import
+                    color: "#d97757"
+                  - entity: sensor.YOUR_FOX_SERIAL_feedin_power
+                    name: Export
+                    color: "#4fc9b8"
+                hours_to_show: 6
+                points_per_hour: 4
+                line_width: 0
+                animate: false
+                show:
+                  graph: bar
+                  labels: false
+                  legend: false
+                  name: false
+                  icon: false
+                  state: false
+                card_mod:
+                  style: |
+                    ha-card { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: -8px; box-shadow: none; }
+
+      # ---- Battery + Panels row ----
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            primary: "{{ states('sensor.YOUR_FOX_SERIAL_soc') }}%"
+            secondary: >-
+              {% set soc = states('sensor.YOUR_FOX_SERIAL_soc') | float(0) %}{% set kwh = (soc / 100 * 20) | round(1) %}{% set chg = states('sensor.YOUR_FOX_SERIAL_bat_charge_power') | float(0) %}{% set dis = states('sensor.YOUR_FOX_SERIAL_bat_discharge_power') | float(0) %}≈ {{ kwh }} kWh{% if chg > 0.05 %} • Charging +{{ chg }} kW{% elif dis > 0.05 %} • Discharging -{{ dis }} kW{% if dis > 0 %} ({{ (kwh / dis) | round(1) }} hrs left){% endif %}{% else %} • Idle{% endif %}
+            icon: >-
+              {% set chg = states('sensor.YOUR_FOX_SERIAL_bat_charge_power') | float(0) %}{% set dis = states('sensor.YOUR_FOX_SERIAL_bat_discharge_power') | float(0) %}{% if chg > 0.05 %}mdi:battery-charging{% elif dis > 0.05 %}mdi:battery-arrow-down{% else %}mdi:battery{% endif %}
+            icon_color: >-
+              {% set chg = states('sensor.YOUR_FOX_SERIAL_bat_charge_power') | float(0) %}{% set dis = states('sensor.YOUR_FOX_SERIAL_bat_discharge_power') | float(0) %}{% if chg > 0.05 %}green{% elif dis > 0.05 %}orange{% else %}grey{% endif %}
+
+          - type: entities
+            title: Panels
+            show_header_toggle: false
+            entities:
+              - entity: sensor.YOUR_FOX_SERIAL_pv1_power
+                name: Garage (PV1)
+              - entity: sensor.YOUR_FOX_SERIAL_pv2_power
+                name: House (PV2)
+
+      # ---- Break-even estimate ----
+      - type: markdown
+        title: Break-even Today (estimate)
+        content: >-
+          **Costs**
+
+
+          Grid import: {{ states('sensor.YOUR_FOX_SERIAL_daily_grid_consumption') }} kWh @ {{ (states('sensor.YOUR_AMBER_SITE_general_price') | float(0) * 100) | round(1) }}¢/kWh → ${{ (states('sensor.YOUR_FOX_SERIAL_daily_grid_consumption') | float(0) * states('sensor.YOUR_AMBER_SITE_general_price') | float(0)) | round(2) }}
+
+
+          **Credits**
+
+
+          Solar export: {{ states('sensor.YOUR_FOX_SERIAL_daily_feedin') }} kWh @ {{ (states('sensor.YOUR_AMBER_SITE_feed_in_price') | float(0) * 100) | round(1) }}¢/kWh → ${{ (states('sensor.YOUR_FOX_SERIAL_daily_feedin') | float(0) * states('sensor.YOUR_AMBER_SITE_feed_in_price') | float(0)) | round(2) }}
+
+
+          **Net today: ${{ ((states('sensor.YOUR_FOX_SERIAL_daily_feedin') | float(0) * states('sensor.YOUR_AMBER_SITE_feed_in_price') | float(0)) - (states('sensor.YOUR_FOX_SERIAL_daily_grid_consumption') | float(0) * states('sensor.YOUR_AMBER_SITE_general_price') | float(0))) | round(2) }}**
+
+
+          *Estimate only — uses current price × today's total kWh, not a true running total. Doesn't include any daily supply charge.*
+

@@ -1,0 +1,112 @@
+# ===================================================================
+# AC Auto Heat/Cool v4 — reads sensor.ac_control_temperature
+#
+# That helper sensor (Settings > Devices & Services > Helpers >
+# Template) returns the IKEA hallway temperature when it is available,
+# and falls back to the AC's own current_temperature when the IKEA
+# sensor is unavailable. This stops the AC getting stuck on (or off)
+# when the Thread sensor drops out.
+#
+# Still checks every 5 minutes on a schedule.
+#
+# Thresholds (edit the numbers below to taste):
+#   Heat ON  below 18° | Heat OFF above 19° | heat target 19°
+#   Cool ON  above 25° | Cool OFF below 18° | cool target 18°
+#
+# Delete the v3 automations before adding these, so only one version
+# is controlling the AC at a time.
+# Add each block as its own automation (Edit in YAML, one block at a
+# time, no "---" separators).
+# ===================================================================
+
+alias: AC Auto Heat On
+triggers:
+  - trigger: time_pattern
+    minutes: /5
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.ac_control_temperature
+    below: 18
+  - condition: state
+    entity_id: climate.YOUR_AC
+    state: "off"
+actions:
+  - action: climate.set_hvac_mode
+    target:
+      entity_id: climate.YOUR_AC
+    data:
+      hvac_mode: heat
+  - action: climate.set_temperature
+    target:
+      entity_id: climate.YOUR_AC
+    data:
+      temperature: 19
+mode: single
+
+---
+
+alias: AC Auto Heat Off
+triggers:
+  - trigger: time_pattern
+    minutes: /5
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.ac_control_temperature
+    above: 19
+  - condition: state
+    entity_id: climate.YOUR_AC
+    state: heat
+actions:
+  - action: climate.set_hvac_mode
+    target:
+      entity_id: climate.YOUR_AC
+    data:
+      hvac_mode: "off"
+mode: single
+
+---
+
+alias: AC Auto Cool On
+triggers:
+  - trigger: time_pattern
+    minutes: /5
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.ac_control_temperature
+    above: 25
+  - condition: state
+    entity_id: climate.YOUR_AC
+    state: "off"
+actions:
+  - action: climate.set_hvac_mode
+    target:
+      entity_id: climate.YOUR_AC
+    data:
+      hvac_mode: cool
+  - action: climate.set_temperature
+    target:
+      entity_id: climate.YOUR_AC
+    data:
+      temperature: 18
+mode: single
+
+---
+
+alias: AC Auto Cool Off
+triggers:
+  - trigger: time_pattern
+    minutes: /5
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.ac_control_temperature
+    below: 18
+  - condition: state
+    entity_id: climate.YOUR_AC
+    state: cool
+actions:
+  - action: climate.set_hvac_mode
+    target:
+      entity_id: climate.YOUR_AC
+    data:
+      hvac_mode: "off"
+mode: single

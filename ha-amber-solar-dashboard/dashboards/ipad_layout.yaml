@@ -1,0 +1,350 @@
+# iPad Pro 13" landscape — everything on ONE screen, no scrolling.
+# View type: Panel (1 card).  Paste as ONE Manual card.
+#
+# Layout (3 columns x 3 rows):
+#   Row 1:  Weather              |  Clock + charge time  |  Battery + Panels
+#   Row 2:  Amber Price chart    |  Solcast chart   |  Break-even Today
+#   Row 3:  Solar + graph        |  Home + graph    |  Grid + graph
+#
+# Height knobs if you need to trim/add:  chart height (2 x "height: 240")  and  mini-graph "height: 55".
+type: vertical-stack
+# Auto-fit for smaller screens (e.g. a 9" tablet): below ~960px viewport height the
+# whole layout is scaled down in steps. On the 13" iPad none of these rules apply.
+# If a screen still scrolls, lower that bracket's zoom number; if text is too small, raise it.
+card_mod:
+  style: |
+    @media (max-height: 959px) { :host { zoom: 0.86; } }
+    @media (max-height: 859px) { :host { zoom: 0.80; } }
+    @media (max-height: 799px) { :host { zoom: 0.73; } }
+    @media (max-height: 739px) { :host { zoom: 0.67; } }
+    @media (max-height: 679px) { :host { zoom: 0.60; } }
+    @media (max-height: 619px) { :host { zoom: 0.54; } }
+    @media (max-height: 559px) { :host { zoom: 0.48; } }
+cards:
+
+  # ================= ROW 1 =================
+  - type: horizontal-stack
+    cards:
+
+      # ---- Weather (slimmed down: no wind chart, no attribute row) ----
+      - type: custom:weather-chart-card
+        entity: weather.YOUR_WEATHER_ENTITY
+        show_main: true
+        show_temperature: true
+        show_current_condition: true
+        show_attributes: false
+        show_time: false
+        show_time_seconds: false
+        show_day: false
+        show_date: false
+        show_humidity: true
+        show_pressure: true
+        show_wind_direction: true
+        show_wind_speed: true
+        show_sun: true
+        show_feels_like: false
+        show_dew_point: false
+        show_wind_gust_speed: false
+        show_visibility: false
+        show_last_changed: false
+        use_12hour_format: false
+        icons_size: '25'
+        animated_icons: true
+        icon_style: style2
+        autoscroll: false
+        forecast:
+          precipitation_type: rainfall
+          show_probability: false
+          labels_font_size: '11'
+          precip_bar_size: '100'
+          style: style2
+          show_wind_forecast: false
+          condition_icons: true
+          round_temp: true
+          type: daily
+          number_of_forecasts: '0'
+          disable_animation: false
+        units:
+          speed: ''
+        locale: en
+
+      # ---- Clock + cheapest charging time ----
+      - type: vertical-stack
+        cards:
+          - type: custom:digital-clock
+          - type: markdown
+            content: >-
+              ### 🔌 Cheapest time to charge the Car
+
+              # {{ as_timestamp(states('input_datetime.ev_start')) | timestamp_custom('%H:%M, %a %d %b') }}
+            card_mod:
+              style: |
+                ha-card { text-align: center !important; }
+                ha-markdown h3 { font-size: 15px !important; font-weight: 500; margin: 0; text-align: center !important; }
+                ha-markdown h1 { font-size: 34px !important; color: #2ecc71 !important; margin: 4px 0 0; text-align: center !important; }
+          - type: tile
+            entity: climate.YOUR_AC
+            name: Air Con
+            icon: mdi:air-conditioner
+            vertical: true
+            card_mod:
+              style: |
+                .primary { font-size: 18px !important; font-weight: 700 !important; }
+                .secondary { font-size: 15px !important; }
+
+      # ---- Battery (with progress bar) + Panels ----
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: >-
+              {% set soc = states('sensor.YOUR_FOX_SERIAL_soc') | float(0) %}{% set kwh = (soc / 100 * 20) | round(1) %}{% set chg = states('sensor.YOUR_FOX_SERIAL_bat_charge_power') | float(0) %}{% set dis = states('sensor.YOUR_FOX_SERIAL_bat_discharge_power') | float(0) %}
+              ### 🔋 Battery · ≈ {{ kwh }} kWh · {% if chg > 0.05 %}🟢 Charging +{{ chg }} kW{% elif dis > 0.05 %}🟠 Discharging −{{ dis }} kW ({{ (kwh / dis) | round(1) }} hrs){% else %}⚪ Idle{% endif %}
+
+              # {{ soc | round(0) | int }}%
+            card_mod:
+              style: |
+                {% set soc = states('sensor.YOUR_FOX_SERIAL_soc') | float(0) %}
+                ha-card {
+                  padding-bottom: 26px;
+                  background-image: linear-gradient(to right, #4ade80 {{ soc }}%, #333 {{ soc }}%);
+                  background-size: calc(100% - 32px) 9px;
+                  background-position: 16px calc(100% - 12px);
+                  background-repeat: no-repeat;
+                }
+                ha-markdown h3 { font-size: 14px !important; font-weight: 500; margin: 0; }
+                ha-markdown h1 { font-size: 36px !important; margin: 2px 0 0; color: #f5f5f5; }
+          - type: markdown
+            content: >-
+              ### 🟩 Panels
+
+              **Garage (PV1)** {{ states('sensor.YOUR_FOX_SERIAL_pv1_power') }} kW  ·  **House (PV2)** {{ states('sensor.YOUR_FOX_SERIAL_pv2_power') }} kW  ·  **PV3** {{ states('sensor.YOUR_FOX_SERIAL_pv3_power') }} kW
+            card_mod:
+              style: |
+                ha-markdown h3 { font-size: 14px !important; font-weight: 500; margin: 0 0 4px; }
+                ha-markdown p { font-size: 15px !important; margin: 0; }
+
+  # ================= ROW 2 =================
+  - type: horizontal-stack
+    cards:
+
+      # ---- Amber Price ----
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Amber Price — Past 12h & Next 12h Forecast
+        graph_span: 24h
+        span:
+          start: minute
+          offset: -12h
+        apex_config:
+          chart:
+            height: 240
+          plotOptions:
+            bar:
+              distributed: true
+              columnWidth: 60%
+              colors:
+                ranges:
+                  - from: -1
+                    to: 0
+                    color: '#00e396'
+                  - from: 0.001
+                    to: 0.2
+                    color: '#feb019'
+                  - from: 0.201
+                    to: 2
+                    color: '#ff4560'
+          legend:
+            show: false
+          xaxis:
+            labels:
+              format: HH:mm
+          tooltip:
+            "y":
+              formatter: |
+                EVAL:function(value) { return value.toFixed(4) + " $/kWh"; }
+        series:
+          - entity: sensor.YOUR_AMBER_SITE_general_price
+            name: Actual Price (past)
+            type: column
+            group_by:
+              func: avg
+              duration: 30min
+          - entity: sensor.YOUR_AMBER_SITE_general_forecast
+            name: Forecast Price (next 12h)
+            type: column
+            data_generator: |
+              var now = Date.now();
+              return entity.attributes.forecasts
+                .map(f => [new Date(f.start_time).getTime(), f.per_kwh])
+                .filter(point => point[0] >= now);
+
+      # ---- Solcast PV Forecast ----
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Solcast PV Forecast
+        graph_span: 48h
+        now:
+          show: true
+          label: Now
+        apex_config:
+          chart:
+            height: 240
+        series:
+          - entity: sensor.solcast_pv_forecast_forecast_today
+            name: Forecast Today
+            type: column
+            group_by:
+              func: avg
+              duration: 3h
+          - entity: sensor.solcast_pv_forecast_forecast_tomorrow
+            name: Forecast Tomorrow
+            type: column
+            group_by:
+              func: avg
+              duration: 3h
+
+      # ---- Break-even Today (one compact card) ----
+      - type: markdown
+        content: |-
+          {% set imp = states('sensor.YOUR_FOX_SERIAL_daily_grid_consumption') | float(0) %}{% set exp = states('sensor.YOUR_FOX_SERIAL_daily_feedin') | float(0) %}{% set ip = states('sensor.YOUR_AMBER_SITE_general_price') | float(0) %}{% set ep = states('sensor.YOUR_AMBER_SITE_feed_in_price') | float(0) %}{# EDIT: your daily supply/standing charge in dollars #}{% set supply = 0.00 %}{% set cost = imp * ip %}{% set credit = exp * ep %}{% set net = credit - cost - supply %}
+          ## 🎯 Break-even Today {{ '🟢' if net >= 0 else '🔴' }} {{ '+' if net >= 0 else '-' }}${{ net | abs | round(2) }}
+
+          {{ 'Break-even reached' if net >= 0 else 'Not at break-even yet' }} · estimate (today's kWh × current price)
+
+          🔴 **Costs**
+          - Grid import · {{ imp | round(1) }} kWh @ {{ (ip * 100) | round(1) }}¢ → **${{ cost | round(2) }}**
+          - Standing charge → **${{ '%.2f' | format(supply) }}**
+          - Total → **${{ (cost + supply) | round(2) }}**
+
+          🟢 **Credits**
+          - Solar export · {{ exp | round(1) }} kWh @ {{ (ep * 100) | round(1) }}¢ → **${{ credit | round(2) }}**
+        card_mod:
+          style: |
+            ha-markdown h2 { font-size: 20px !important; margin: 0; }
+            ha-markdown p { font-size: 13px !important; color: #9aa0a6; margin: 4px 0 8px; }
+            ha-markdown ul { margin: 2px 0 8px; padding-left: 18px; }
+            ha-markdown li { font-size: 14px !important; }
+
+  # ================= ROW 3: Solar / Home / Grid =================
+  - type: horizontal-stack
+    cards:
+
+      # ---- Solar ----
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: >-
+              ### ☀️ Solar · {{ states('sensor.YOUR_FOX_SERIAL_daily_generation') }} kWh today
+
+              # {{ states('sensor.YOUR_FOX_SERIAL_pv_power') | float(0) | round(2) }} kW
+            card_mod:
+              style: |
+                ha-card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+                ha-markdown h3 { font-size: 14px !important; font-weight: 500; margin: 0; color: #9aa0a6; }
+                ha-markdown h1 { font-size: 36px !important; margin: 2px 0 0; color: #f5f5f5; }
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.YOUR_FOX_SERIAL_pv_power
+                color: '#f0a93a'
+            hours_to_show: 6
+            points_per_hour: 4
+            line_width: 0
+            height: 55
+            show:
+              graph: bar
+              labels: false
+              legend: false
+              name: false
+              icon: false
+              state: false
+            card_mod:
+              style: |
+                ha-card { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: -8px; box-shadow: none; }
+
+      # ---- Home ----
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: >-
+              ### 🏠 Home · {{ states('sensor.foxess_daily_load_energy') | float(0) | round(1) }} kWh today
+
+              # {{ states('sensor.YOUR_FOX_SERIAL_loads_power') | float(0) | round(2) }} kW
+            card_mod:
+              style: |
+                ha-card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+                ha-markdown h3 { font-size: 14px !important; font-weight: 500; margin: 0; color: #9aa0a6; }
+                ha-markdown h1 { font-size: 36px !important; margin: 2px 0 0; color: #f5f5f5; }
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.YOUR_FOX_SERIAL_loads_power
+                color: '#4fa8fc'
+            hours_to_show: 6
+            points_per_hour: 4
+            line_width: 0
+            height: 55
+            show:
+              graph: bar
+              labels: false
+              legend: false
+              name: false
+              icon: false
+              state: false
+            card_mod:
+              style: |
+                ha-card { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: -8px; box-shadow: none; }
+          - type: glance
+            show_name: true
+            show_icon: true
+            show_state: true
+            entities:
+              - entity: sensor.YOUR_HALLWAY_TEMPERATURE
+                name: Hallway
+              - entity: sensor.YOUR_BEDROOM_TEMPERATURE
+                name: Bedroom
+              - entity: sensor.YOUR_LIVINGROOM_TEMPERATURE
+                name: Living Room
+            card_mod:
+              style: |
+                ha-card { padding: 8px 4px; }
+                .name { font-size: 11px !important; }
+                .state { font-size: 13px !important; }
+
+      # ---- Grid (Importing / Exporting) ----
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: >-
+              {% set imp = states('sensor.YOUR_FOX_SERIAL_grid_consumption_power') | float(0) %}{% set exp = states('sensor.YOUR_FOX_SERIAL_feedin_power') | float(0) %}
+              ### ⚡ Grid · {% if exp > imp %}**Exporting** {{ states('sensor.YOUR_FOX_SERIAL_daily_feedin') }} kWh today{% else %}**Importing** {{ states('sensor.YOUR_FOX_SERIAL_daily_grid_consumption') }} kWh today{% endif %}
+
+              # {{ [imp, exp] | max | round(2) }} kW
+            card_mod:
+              style: |
+                {% set imp = states('sensor.YOUR_FOX_SERIAL_grid_consumption_power') | float(0) %}
+                {% set exp = states('sensor.YOUR_FOX_SERIAL_feedin_power') | float(0) %}
+                ha-card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+                ha-markdown h3 { font-size: 14px !important; font-weight: 500; margin: 0; color: #9aa0a6; }
+                ha-markdown h1 { font-size: 36px !important; margin: 2px 0 0; color: #f5f5f5; }
+                ha-markdown strong { color: {% if exp > imp %}#4ade80{% else %}#f87171{% endif %}; }
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.YOUR_FOX_SERIAL_grid_consumption_power
+                color: '#d97757'
+              - entity: sensor.YOUR_FOX_SERIAL_feedin_power
+                color: '#4ade80'
+            hours_to_show: 6
+            points_per_hour: 4
+            line_width: 0
+            height: 55
+            show:
+              graph: bar
+              labels: false
+              legend: false
+              name: false
+              icon: false
+              state: false
+            card_mod:
+              style: |
+                ha-card { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: -8px; box-shadow: none; }
